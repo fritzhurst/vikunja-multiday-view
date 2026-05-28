@@ -1,4 +1,4 @@
-# Vikunja Kanban
+# Vikunja Multi-day View
 
 A 10-day kanban view for [Vikunja](https://vikunja.io) tasks — columns for Overdue, Today + N future days (configurable), Future, and No Date. Drag-and-drop to reschedule, with drop-between using a midpoint time so cards land exactly where you drop them.
 
@@ -53,7 +53,7 @@ git init
 git add .
 git status                              # sanity-check — no config.js, no token file
 git commit -m "Initial commit"
-gh repo create vikunja-kanban --private --source . --push
+gh repo create vikunja-multiday-view --private --source . --push
 ```
 
 (or create the repo manually on github.com and `git remote add origin … && git push -u origin main`).
@@ -69,28 +69,28 @@ The container is a stock `nginx:alpine` that writes `config.js` from env vars at
 On your Unraid server (or any Docker host):
 
 ```sh
-git clone https://github.com/<you>/vikunja-kanban.git
-cd vikunja-kanban
-docker build -t vikunja-kanban:latest .
+git clone https://github.com/<you>/vikunja-multiday-view.git
+cd vikunja-multiday-view
+docker build -t vikunja-multiday-view:latest .
 ```
 
 ### Run the container
 
 ```sh
 docker run -d \
-  --name vikunja-kanban \
+  --name vikunja-multiday-view \
   --restart unless-stopped \
   -p 8081:8080 \
   -e VIKUNJA_URL='https://tasks.fritzhurst.com' \
   -e VIKUNJA_TOKEN='tk_yourtokenhere' \
-  vikunja-kanban:latest
+  vikunja-multiday-view:latest
 ```
 
 The container listens on **8080** internally (the `nginx-unprivileged` base image runs nginx as a non-root user, which can't bind to port 80). The host port can be anything you've not already used — `8081` in this example.
 
 …or add a custom container in Unraid's Docker UI with:
 
-- **Repository**: `vikunja-kanban:latest`
+- **Repository**: `vikunja-multiday-view:latest`
 - **Network type**: bridge
 - **Port**: container `8080` → host `8081` (or whichever host port is free)
 - **Variables**:
@@ -109,7 +109,7 @@ curl http://localhost:8081/config.js
 Cloudflare Access blocks the **public internet** from reaching the app, but anyone on your home LAN can still hit `http://<unraid-ip>:8081` directly and read the token from `config.js`. If that matters to you, bind the host port to loopback only:
 
 ```sh
-docker run -d ... -p 127.0.0.1:8081:8080 ... vikunja-kanban:latest
+docker run -d ... -p 127.0.0.1:8081:8080 ... vikunja-multiday-view:latest
 ```
 
 Caveat: `cloudflared` must be able to reach `127.0.0.1:8081` on the Unraid host. That works if `cloudflared` is configured to use the host's network (e.g., Unraid Community Apps `cloudflared` with `--network=host`, or running as a host-level service). If `cloudflared` runs on a Docker bridge network, it can't see the host's loopback and this binding will break the tunnel — leave the default `-p 8081:8080` in that case.
@@ -130,7 +130,7 @@ Save. After a few seconds, `https://fritz-tasks.fritzhurst.com` should hit the c
 
 In **Cloudflare Zero Trust** → **Access** → **Applications** → **Add an application** → **Self-hosted**:
 
-- **Application name**: `Vikunja Kanban`
+- **Application name**: `Vikunja Multi-day View`
 - **Session duration**: a generous value (e.g. 30 days) so you're not re-authing constantly
 - **Application domain**: `fritz-tasks.fritzhurst.com`
 
@@ -147,15 +147,15 @@ Save. Visit `https://fritz-tasks.fritzhurst.com` — you should get a Cloudflare
 Pull and rebuild:
 
 ```sh
-cd vikunja-kanban
+cd vikunja-multiday-view
 git pull
-docker build -t vikunja-kanban:latest .
-docker stop vikunja-kanban && docker rm vikunja-kanban
-docker run -d --name vikunja-kanban --restart unless-stopped \
+docker build -t vikunja-multiday-view:latest .
+docker stop vikunja-multiday-view && docker rm vikunja-multiday-view
+docker run -d --name vikunja-multiday-view --restart unless-stopped \
   -p 8081:8080 \
   -e VIKUNJA_URL='https://tasks.fritzhurst.com' \
   -e VIKUNJA_TOKEN='tk_yourtokenhere' \
-  vikunja-kanban:latest
+  vikunja-multiday-view:latest
 ```
 
 `nginx.conf` sets `Cache-Control: no-store` on everything, so users see updates on the next page load — no hard refresh needed.
@@ -165,12 +165,12 @@ docker run -d --name vikunja-kanban --restart unless-stopped \
 When you rotate the Vikunja API token, just update the `VIKUNJA_TOKEN` env var on the container and restart it. The entrypoint regenerates `config.js`. No image rebuild required.
 
 ```sh
-docker stop vikunja-kanban && docker rm vikunja-kanban
-docker run -d --name vikunja-kanban --restart unless-stopped \
+docker stop vikunja-multiday-view && docker rm vikunja-multiday-view
+docker run -d --name vikunja-multiday-view --restart unless-stopped \
   -p 8081:8080 \
   -e VIKUNJA_URL='https://tasks.fritzhurst.com' \
   -e VIKUNJA_TOKEN='tk_new_token_here' \
-  vikunja-kanban:latest
+  vikunja-multiday-view:latest
 ```
 
 ## What does NOT go in git
