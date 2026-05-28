@@ -1,0 +1,5 @@
+# Normalize all text files to LF on checkout. The entrypoint shell script
+# in particular must use LF — a CRLF shebang line (`#!/bin/sh\r`) is parsed
+# as the command literally on Linux and the script fails to execute.
+* text=auto eol=lf
+*.sh        text eol=lf

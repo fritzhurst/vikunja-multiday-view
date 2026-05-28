@@ -1,0 +1,27 @@
+# Anything not COPY'd by the Dockerfile should be excluded from the build context.
+.git
+.gitignore
+.dockerignore
+
+# Docs / project files
+CLAUDE.md
+README.md
+
+# Local-only / secret-bearing files
+config.js
+config.local.js
+config.example.js
+.env
+.env.*
+Vikunja_Tasks_Token.txt
+*token*.txt
+*Token*.txt
+
+# Debug / dev artifacts
+cors_test.html
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

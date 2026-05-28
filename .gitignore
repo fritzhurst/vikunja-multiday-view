@@ -1,0 +1,21 @@
+# Local config holding the Vikunja API token — never commit
+config.js
+config.local.js
+.env
+.env.*
+
+# Raw token file
+Vikunja_Tasks_Token.txt
+*token*.txt
+*Token*.txt
+
+# Node / tooling (in case we add any later)
+node_modules/
+dist/
+.cache/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

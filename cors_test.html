@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Vikunja CORS probe</title>
+  <style>
+    body { font: 14px/1.5 -apple-system, Segoe UI, sans-serif; margin: 2rem; max-width: 900px; }
+    h1 { font-size: 1.3rem; margin: 0 0 .5rem; }
+    .row { margin: .75rem 0; }
+    button { font: inherit; padding: .4rem .8rem; cursor: pointer; }
+    pre { background: #f4f4f4; padding: .75rem; border-radius: 4px; white-space: pre-wrap;
+          word-break: break-word; max-height: 50vh; overflow: auto; }
+    .ok  { color: #0a6c2a; font-weight: 600; }
+    .bad { color: #b00020; font-weight: 600; }
+    .note { color: #555; font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <h1>Vikunja CORS probe</h1>
+  <div class="note">
+    Loaded from <code id="origin"></code>.
+    If you opened this as a <code>file://</code> URL, the browser sends
+    <code>Origin: null</code>, which most CORS configs reject. A failure here
+    doesn't necessarily mean CORS is broken — only that it's not allowed for
+    <code>null</code>. Re-test from a localhost server if needed.
+  </div>
+
+  <div class="row">
+    <button id="btn-get">1. GET /tasks?per_page=3</button>
+    <button id="btn-post">2. POST /tasks/904 (idempotent desc round-trip)</button>
+    <button id="btn-clear">clear</button>
+  </div>
+
+  <pre id="out">Ready. Click a button.</pre>
+
+  <script src="config.js"></script>
+  <script>
+    document.getElementById('origin').textContent = location.href;
+    const out = document.getElementById('out');
+    const log = (msg, cls) => {
+      const stamp = new Date().toISOString().slice(11, 19);
+      const line = cls
+        ? `<span class="${cls}">[${stamp}] ${msg}</span>`
+        : `[${stamp}] ${msg}`;
+      out.innerHTML += '\n' + line;
+      out.scrollTop = out.scrollHeight;
+    };
+    const clear = () => { out.textContent = 'Cleared.'; };
+
+    function headers() {
+      return {
+        'Authorization': 'Bearer ' + window.VIKUNJA_TOKEN,
+        'Content-Type': 'application/json',
+      };
+    }
+
+    async function probeGet() {
+      log('GET ' + window.VIKUNJA_BASE + '/tasks?per_page=3 ...');
+      try {
+        const r = await fetch(window.VIKUNJA_BASE + '/tasks?per_page=3', {
+          method: 'GET',
+          headers: headers(),
+        });
+        log('HTTP ' + r.status + ' ' + r.statusText, r.ok ? 'ok' : 'bad');
+        const text = await r.text();
+        const preview = text.length > 1200 ? text.slice(0, 1200) + ' …' : text;
+        log('Body (first 1200 chars):\n' + preview);
+        if (r.ok) {
+          try {
+            const arr = JSON.parse(text);
+            log('Parsed ' + arr.length + ' task(s). Sample titles: ' +
+                arr.map(t => t.title).join(' | '), 'ok');
+          } catch (e) { log('JSON parse failed: ' + e.message, 'bad'); }
+        }
+      } catch (e) {
+        log('fetch() threw: ' + e.message, 'bad');
+        log('This is what a CORS rejection looks like — the browser blocks the response before JS sees it.', 'note');
+      }
+    }
+
+    async function probePost() {
+      log('GET /tasks/904 to capture current description ...');
+      try {
+        const r1 = await fetch(window.VIKUNJA_BASE + '/tasks/904', { headers: headers() });
+        if (!r1.ok) { log('GET failed: HTTP ' + r1.status, 'bad'); return; }
+        const t = await r1.json();
+        log('  current description: ' + JSON.stringify(t.description));
+        log('POST /tasks/904 with same description (idempotent) ...');
+        const r2 = await fetch(window.VIKUNJA_BASE + '/tasks/904', {
+          method: 'POST',
+          headers: headers(),
+          body: JSON.stringify({ description: t.description }),
+        });
+        log('POST HTTP ' + r2.status + ' ' + r2.statusText, r2.ok ? 'ok' : 'bad');
+        if (r2.ok) {
+          const after = await r2.json();
+          log('  updated timestamp returned: ' + after.updated, 'ok');
+          log('Write path works from this origin.', 'ok');
+        } else {
+          log('Body: ' + await r2.text());
+        }
+      } catch (e) {
+        log('fetch() threw: ' + e.message, 'bad');
+      }
+    }
+
+    document.getElementById('btn-get').onclick = probeGet;
+    document.getElementById('btn-post').onclick = probePost;
+    document.getElementById('btn-clear').onclick = clear;
+  </script>
+</body>
+</html>

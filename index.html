@@ -1,0 +1,969 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vikunja Kanban</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --col-bg: #fff;
+      --col-border: #e3e6ea;
+      --card-bg: #fafbfc;
+      --card-border: #d8dce1;
+      --text: #1f2328;
+      --muted: #6a737d;
+      --overdue: #b00020;
+      --today-accent: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header.app-header,
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .55rem 1rem;
+      background: #fff;
+      border-bottom: 1px solid var(--col-border);
+      position: sticky;
+      z-index: 10;
+    }
+    header.app-header { top: 0; }
+    .toolbar { top: 48px; }
+    header.app-header h1 {
+      font-size: 1.05rem;
+      margin: 0;
+      font-weight: 600;
+    }
+    .spacer { flex: 1; }
+    .ctrl-btn {
+      font: inherit;
+      padding: .35rem .75rem;
+      border: 1px solid var(--card-border);
+      background: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .ctrl-btn:hover { background: #f0f2f5; }
+    .ctrl-btn:disabled { opacity: .55; cursor: default; }
+
+    .status { color: var(--muted); font-size: .85rem; }
+    .status.error { color: var(--overdue); font-weight: 600; }
+
+    .days-wrapper { display: flex; align-items: center; gap: .35rem; font-size: .9rem; color: var(--muted); }
+    .days-wrapper select {
+      font: inherit;
+      padding: .25rem .35rem;
+      border: 1px solid var(--card-border);
+      background: #fff;
+      border-radius: 4px;
+    }
+
+    .board {
+      display: grid;
+      gap: .5rem;
+      padding: .5rem;
+      overflow-x: auto;
+      align-items: start;
+    }
+    .col {
+      background: var(--col-bg);
+      border: 1px solid var(--col-border);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 140px);
+    }
+    .col-header {
+      padding: .5rem .6rem;
+      border-bottom: 1px solid var(--col-border);
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: .5rem;
+    }
+    .col-header .day { font-size: .95rem; }
+    .col-header .date { color: var(--muted); font-size: .8rem; font-weight: 400; }
+    .col-header .count { color: var(--muted); font-size: .8rem; font-weight: 400; }
+    .col.overdue .col-header .day { color: var(--overdue); }
+    .col.today .col-header .day { color: var(--today-accent); }
+    .col.future .col-header .day,
+    .col.nodate .col-header .day { color: #6b7280; }
+
+    .col-body {
+      padding: .4rem;
+      overflow-y: auto;
+      flex: 1;
+      min-height: 50px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 5px;
+      padding: .45rem .55rem;
+      margin-bottom: .4rem;
+      font-size: .9rem;
+      line-height: 1.3;
+    }
+    .card-title {
+      font-weight: 500;
+      color: var(--text);
+      text-decoration: none;
+      display: inline-block;
+      word-break: break-word;
+    }
+    .card-title:hover { text-decoration: underline; }
+    .card-meta {
+      margin-top: .25rem;
+      display: flex;
+      gap: .35rem;
+      flex-wrap: wrap;
+      align-items: center;
+      font-size: .75rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: .05rem .4rem;
+      border-radius: 10px;
+      background: #eef0f3;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .badge.proj { background: #e7eefc; color: #1e3a8a; }
+    .badge.due { background: #f1f5f9; color: #475569; }
+    .badge.prio-1 { background: #f1f5f9; color: #475569; }
+    .badge.prio-2 { background: #fef3c7; color: #92400e; }
+    .badge.prio-3 { background: #fed7aa; color: #9a3412; }
+    .badge.prio-4 { background: #fecaca; color: #991b1b; }
+    .badge.prio-5 { background: var(--overdue); color: #fff; font-weight: 600; }
+
+    .empty {
+      color: var(--muted);
+      font-style: italic;
+      font-size: .8rem;
+      padding: .5rem;
+      text-align: center;
+    }
+
+    /* Projects filter dropdown */
+    .pf-wrapper { position: relative; }
+    .pf-panel,
+    .ap-panel,
+    .search-results {
+      position: absolute;
+      background: #fff;
+      border: 1px solid var(--col-border);
+      border-radius: 5px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, .10);
+      max-height: 60vh;
+      overflow-y: auto;
+      z-index: 20;
+      display: none;
+    }
+    .pf-panel { top: calc(100% + 4px); right: 0; min-width: 220px; padding: .25rem 0; }
+    .pf-panel.open,
+    .ap-panel.open,
+    .search-results.open { display: block; }
+    .pf-item,
+    .ap-item {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .4rem .85rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .pf-item:hover,
+    .ap-item:hover { background: #f0f2f5; }
+    .pf-item input { margin: 0; }
+    .pf-item.pf-all { font-weight: 600; }
+    .pf-panel hr { border: 0; border-top: 1px solid var(--col-border); margin: .25rem 0; }
+
+    /* Add Task bar */
+    .add-wrapper {
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+      flex: 1;
+      max-width: 640px;
+    }
+    .add-input {
+      font: inherit;
+      padding: .4rem .6rem;
+      border: 1px solid var(--card-border);
+      border-radius: 4px;
+      background: #fff;
+      flex: 1;
+      min-width: 200px;
+    }
+    .ap-wrapper { position: relative; }
+    .ap-panel { top: calc(100% + 4px); left: 0; min-width: 200px; padding: .25rem 0; }
+    .ap-item.selected { background: #e7eefc; color: #1e3a8a; font-weight: 500; }
+
+    /* Search */
+    .search-wrapper { position: relative; }
+    .search-input {
+      font: inherit;
+      padding: .4rem .6rem;
+      border: 1px solid var(--card-border);
+      border-radius: 4px;
+      background: #fff;
+      width: 280px;
+    }
+    .search-results { top: calc(100% + 4px); right: 0; min-width: 340px; max-width: 480px; }
+    .search-result {
+      display: block;
+      padding: .45rem .75rem;
+      text-decoration: none;
+      color: var(--text);
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .search-result:last-child { border-bottom: 0; }
+    .search-result:hover { background: #f0f2f5; }
+    .search-result-title { font-weight: 500; }
+    .search-result-meta { font-size: .75rem; color: var(--muted); margin-top: .15rem; }
+    .search-empty { padding: .5rem .75rem; color: var(--muted); font-style: italic; }
+
+    /* Drag-and-drop */
+    .card { cursor: grab; }
+    .card.dragging { opacity: .35; cursor: grabbing; }
+    .col-body { transition: background-color .12s ease; }
+    .col.drag-over { border-color: var(--today-accent); box-shadow: 0 0 0 2px var(--today-accent) inset; }
+    .col.drag-over .col-body { background-color: #e7eefc; }
+    .card.drop-flank {
+      border-color: var(--today-accent);
+      box-shadow: 0 0 0 2px var(--today-accent);
+      background: #d3e2fc;
+    }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>Vikunja Kanban</h1>
+  <span id="status" class="status">idle</span>
+  <span class="spacer"></span>
+  <label class="days-wrapper" for="days-select">
+    Days
+    <select id="days-select"></select>
+  </label>
+  <div class="pf-wrapper">
+    <button id="pf-button" class="ctrl-btn" type="button">Projects: All ▾</button>
+    <div id="pf-panel" class="pf-panel"></div>
+  </div>
+  <button id="refresh" class="ctrl-btn">Refresh</button>
+</header>
+
+<div class="toolbar">
+  <div class="add-wrapper">
+    <input id="add-input" class="add-input" type="text" placeholder="Add a task… (Enter)" />
+    <div class="ap-wrapper">
+      <button id="add-project-btn" class="ctrl-btn" type="button">→ project ▾</button>
+      <div id="add-project-panel" class="ap-panel"></div>
+    </div>
+    <button id="add-btn" class="ctrl-btn" type="button">Add</button>
+  </div>
+  <span class="spacer"></span>
+  <div class="search-wrapper">
+    <input id="search-input" class="search-input" type="text" placeholder="Search tasks…" />
+    <div id="search-results" class="search-results"></div>
+  </div>
+</div>
+
+<main id="board" class="board"></main>
+
+<script src="config.js"></script>
+<script>
+  const PRIORITY_LABEL = { 1: 'Low', 2: 'Med', 3: 'High', 4: 'Urgent', 5: 'Do Now' };
+  const NO_DATE = '0001-01-01T00:00:00Z';
+  const PROJECT_FILTER_KEY = 'kanban.projectFilter';
+  const VISIBLE_DAYS_KEY = 'kanban.visibleDays';
+  const DEFAULT_PROJECT_KEY = 'kanban.defaultProjectId';
+  const MAX_DAYS = 10;
+  const MIN_DAYS = 1;
+  const MAX_SEARCH_RESULTS = 25;
+
+  const statusEl = document.getElementById('status');
+  const boardEl = document.getElementById('board');
+  const refreshBtn = document.getElementById('refresh');
+  const pfButton = document.getElementById('pf-button');
+  const pfPanel = document.getElementById('pf-panel');
+  const daysSelect = document.getElementById('days-select');
+  const addInput = document.getElementById('add-input');
+  const addBtn = document.getElementById('add-btn');
+  const addProjectBtn = document.getElementById('add-project-btn');
+  const addProjectPanel = document.getElementById('add-project-panel');
+  const searchInput = document.getElementById('search-input');
+  const searchResults = document.getElementById('search-results');
+
+  const initialDays = (() => {
+    const v = parseInt(localStorage.getItem(VISIBLE_DAYS_KEY) || '10', 10);
+    if (!Number.isFinite(v) || v < MIN_DAYS || v > MAX_DAYS) return 10;
+    return v;
+  })();
+
+  const state = {
+    tasks: [],
+    projectMap: new Map(),
+    allProjectIds: [],
+    selectedProjectIds: new Set(),
+    visibleDays: initialDays,
+    defaultProjectId: null,
+  };
+
+  const setStatus = (msg, isError = false) => {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle('error', isError);
+  };
+
+  function authHeaders() {
+    return { 'Authorization': 'Bearer ' + window.VIKUNJA_TOKEN };
+  }
+
+  function vikunjaTaskUrl(id) {
+    const ui = window.VIKUNJA_URL || window.VIKUNJA_BASE.replace(/\/api\/v1$/, '');
+    return ui + '/tasks/' + id;
+  }
+
+  async function fetchJSON(path, opts = {}) {
+    const r = await fetch(window.VIKUNJA_BASE + path, {
+      ...opts,
+      headers: { ...authHeaders(), ...(opts.headers || {}) },
+    });
+    if (!r.ok) {
+      const body = await r.text().catch(() => '');
+      throw new Error(`HTTP ${r.status} ${r.statusText} on ${path}: ${body.slice(0, 200)}`);
+    }
+    return { data: await r.json(), totalPages: parseInt(r.headers.get('x-pagination-total-pages') || '1', 10) };
+  }
+
+  async function fetchAllTasks() {
+    const filter = 'done = false';
+    const encoded = encodeURIComponent(filter);
+    const perPage = 50;
+    let page = 1;
+    let all = [];
+    while (true) {
+      const { data, totalPages } = await fetchJSON(`/tasks?per_page=${perPage}&page=${page}&filter=${encoded}`);
+      all = all.concat(data);
+      if (page >= totalPages || data.length === 0) break;
+      page++;
+    }
+    return all;
+  }
+
+  async function fetchProjectMap() {
+    const perPage = 50;
+    let page = 1;
+    const map = new Map();
+    while (true) {
+      const { data, totalPages } = await fetchJSON(`/projects?per_page=${perPage}&page=${page}`);
+      for (const p of data) map.set(p.id, p.title);
+      if (page >= totalPages || data.length === 0) break;
+      page++;
+    }
+    return map;
+  }
+
+  // --- Project filter dropdown ---
+  function loadProjectFilter(allIds) {
+    const raw = localStorage.getItem(PROJECT_FILTER_KEY);
+    if (!raw || raw === 'all') return new Set(allIds);
+    try {
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return new Set(allIds);
+      const present = new Set(allIds);
+      const restored = new Set(arr.filter(id => present.has(id)));
+      if (restored.size === 0) return new Set(allIds);
+      return restored;
+    } catch { return new Set(allIds); }
+  }
+
+  function saveProjectFilter() {
+    if (state.selectedProjectIds.size === state.allProjectIds.length) {
+      localStorage.setItem(PROJECT_FILTER_KEY, 'all');
+    } else {
+      localStorage.setItem(PROJECT_FILTER_KEY, JSON.stringify([...state.selectedProjectIds]));
+    }
+  }
+
+  function updatePfButton() {
+    const total = state.allProjectIds.length;
+    const sel = state.selectedProjectIds.size;
+    let label;
+    if (sel === total) label = 'All';
+    else if (sel === 0) label = 'None';
+    else if (sel === 1) {
+      const id = [...state.selectedProjectIds][0];
+      label = state.projectMap.get(id) || ('#' + id);
+    } else label = `${sel} selected`;
+    pfButton.textContent = `Projects: ${label} ▾`;
+  }
+
+  function sortedProjectIds() {
+    return [...state.allProjectIds].sort((a, b) =>
+      (state.projectMap.get(a) || '').localeCompare(state.projectMap.get(b) || '')
+    );
+  }
+
+  function buildProjectFilterPanel() {
+    pfPanel.innerHTML = '';
+    const sortedIds = sortedProjectIds();
+
+    const allLabel = document.createElement('label');
+    allLabel.className = 'pf-item pf-all';
+    const allCb = document.createElement('input');
+    allCb.type = 'checkbox';
+    allCb.checked = state.selectedProjectIds.size === state.allProjectIds.length;
+    allCb.addEventListener('change', () => {
+      state.selectedProjectIds = allCb.checked ? new Set(state.allProjectIds) : new Set();
+      saveProjectFilter();
+      pfPanel.querySelectorAll('input[data-pid]').forEach(cb => {
+        cb.checked = state.selectedProjectIds.has(Number(cb.dataset.pid));
+      });
+      updatePfButton();
+      applyAndRender();
+    });
+    const allText = document.createElement('span');
+    allText.textContent = 'All';
+    allLabel.append(allCb, allText);
+    pfPanel.appendChild(allLabel);
+
+    pfPanel.appendChild(document.createElement('hr'));
+
+    for (const id of sortedIds) {
+      const lbl = document.createElement('label');
+      lbl.className = 'pf-item';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.dataset.pid = String(id);
+      cb.checked = state.selectedProjectIds.has(id);
+      cb.addEventListener('change', () => {
+        if (cb.checked) state.selectedProjectIds.add(id);
+        else state.selectedProjectIds.delete(id);
+        saveProjectFilter();
+        allCb.checked = state.selectedProjectIds.size === state.allProjectIds.length;
+        updatePfButton();
+        applyAndRender();
+      });
+      const txt = document.createElement('span');
+      txt.textContent = state.projectMap.get(id);
+      lbl.append(cb, txt);
+      pfPanel.appendChild(lbl);
+    }
+  }
+
+  pfButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeAllPopups(pfPanel);
+    pfPanel.classList.toggle('open');
+  });
+
+  // --- Days dropdown ---
+  function initDaysSelect() {
+    for (let n = MAX_DAYS; n >= MIN_DAYS; n--) {
+      const opt = document.createElement('option');
+      opt.value = String(n);
+      opt.textContent = String(n);
+      daysSelect.appendChild(opt);
+    }
+    daysSelect.value = String(state.visibleDays);
+    daysSelect.addEventListener('change', () => {
+      const v = parseInt(daysSelect.value, 10);
+      if (Number.isFinite(v) && v >= MIN_DAYS && v <= MAX_DAYS) {
+        state.visibleDays = v;
+        localStorage.setItem(VISIBLE_DAYS_KEY, String(v));
+        applyAndRender();
+      }
+    });
+  }
+
+  // --- Add-task project picker ---
+  function pickDefaultProjectId() {
+    const stored = parseInt(localStorage.getItem(DEFAULT_PROJECT_KEY) || '0', 10);
+    if (state.projectMap.has(stored)) return stored;
+    if (state.selectedProjectIds.size === 1) return [...state.selectedProjectIds][0];
+    const sorted = sortedProjectIds();
+    return sorted[0] || null;
+  }
+
+  function updateAddProjectButton() {
+    const name = state.defaultProjectId
+      ? state.projectMap.get(state.defaultProjectId)
+      : 'pick project';
+    addProjectBtn.textContent = `→ ${name} ▾`;
+  }
+
+  function buildAddProjectPanel() {
+    addProjectPanel.innerHTML = '';
+    for (const id of sortedProjectIds()) {
+      const item = document.createElement('div');
+      item.className = 'ap-item';
+      if (id === state.defaultProjectId) item.classList.add('selected');
+      item.textContent = state.projectMap.get(id);
+      item.addEventListener('click', () => {
+        state.defaultProjectId = id;
+        localStorage.setItem(DEFAULT_PROJECT_KEY, String(id));
+        addProjectPanel.querySelectorAll('.ap-item').forEach(el => el.classList.remove('selected'));
+        item.classList.add('selected');
+        updateAddProjectButton();
+        addProjectPanel.classList.remove('open');
+      });
+      addProjectPanel.appendChild(item);
+    }
+  }
+
+  addProjectBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeAllPopups(addProjectPanel);
+    addProjectPanel.classList.toggle('open');
+  });
+
+  // --- Add Task submit ---
+  async function submitAdd() {
+    const title = addInput.value.trim();
+    if (!title) return;
+    if (!state.defaultProjectId) {
+      setStatus('Pick a project for new tasks first.', true);
+      return;
+    }
+    addBtn.disabled = true;
+    addInput.disabled = true;
+    setStatus('adding…');
+    try {
+      const midnight = new Date();
+      midnight.setHours(0, 0, 0, 0);
+      const dueDate = midnight.toISOString();
+      const r = await fetch(window.VIKUNJA_BASE + `/projects/${state.defaultProjectId}/tasks`, {
+        method: 'PUT',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, due_date: dueDate }),
+      });
+      if (!r.ok) {
+        const body = await r.text().catch(() => '');
+        throw new Error(`HTTP ${r.status}: ${body.slice(0, 200)}`);
+      }
+      const newTask = await r.json();
+      state.tasks.push(newTask);
+      addInput.value = '';
+      applyAndRender();
+      setStatus(`added "${newTask.title}"`);
+    } catch (e) {
+      setStatus('Add failed: ' + e.message, true);
+      console.error(e);
+    } finally {
+      addBtn.disabled = false;
+      addInput.disabled = false;
+      addInput.focus();
+    }
+  }
+
+  addBtn.addEventListener('click', submitAdd);
+  addInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); submitAdd(); }
+  });
+
+  // --- Search ---
+  function renderSearchResults(q) {
+    searchResults.innerHTML = '';
+    const query = q.trim().toLowerCase();
+    if (!query) {
+      searchResults.classList.remove('open');
+      return;
+    }
+    const matches = [];
+    for (const t of state.tasks) {
+      if (t.title && t.title.toLowerCase().includes(query)) {
+        matches.push(t);
+        if (matches.length >= MAX_SEARCH_RESULTS) break;
+      }
+    }
+    if (matches.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'search-empty';
+      empty.textContent = 'No matches';
+      searchResults.appendChild(empty);
+    } else {
+      for (const t of matches) {
+        const a = document.createElement('a');
+        a.className = 'search-result';
+        a.href = vikunjaTaskUrl(t.id);
+        a.target = 'vikunja';
+        const title = document.createElement('div');
+        title.className = 'search-result-title';
+        title.textContent = t.title;
+        const meta = document.createElement('div');
+        meta.className = 'search-result-meta';
+        const proj = state.projectMap.get(t.project_id) || '';
+        const due = (t.due_date && t.due_date !== NO_DATE)
+          ? localDateKey(new Date(t.due_date))
+          : 'no date';
+        meta.textContent = proj ? `${proj} · ${due}` : due;
+        a.append(title, meta);
+        searchResults.appendChild(a);
+      }
+    }
+    searchResults.classList.add('open');
+  }
+
+  searchInput.addEventListener('input', () => renderSearchResults(searchInput.value));
+  searchInput.addEventListener('focus', () => {
+    if (searchInput.value.trim()) renderSearchResults(searchInput.value);
+  });
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { searchInput.value = ''; searchResults.classList.remove('open'); searchInput.blur(); }
+  });
+
+  function closeAllPopups(except) {
+    if (except !== pfPanel) pfPanel.classList.remove('open');
+    if (except !== addProjectPanel) addProjectPanel.classList.remove('open');
+    if (except !== searchResults) searchResults.classList.remove('open');
+  }
+  document.addEventListener('click', (e) => {
+    if (!pfPanel.contains(e.target) && e.target !== pfButton) pfPanel.classList.remove('open');
+    if (!addProjectPanel.contains(e.target) && e.target !== addProjectBtn) addProjectPanel.classList.remove('open');
+    if (!searchResults.contains(e.target) && e.target !== searchInput) searchResults.classList.remove('open');
+  });
+
+  // --- Column build / task bucketing ---
+  function localDateKey(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function buildColumns(visibleDays) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const cols = [{ id: 'overdue', day: 'Overdue', dateKey: null, dateLabel: '' }];
+    const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    let lastDate = today;
+    for (let i = 0; i < visibleDays; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const dateKey = localDateKey(d);
+      const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
+      let day;
+      if (i === 0) day = 'Today';
+      else if (i === 1) day = 'Tomorrow';
+      else day = weekday[d.getDay()];
+      cols.push({ id: dateKey, day, dateKey, dateLabel, isToday: i === 0 });
+      lastDate = d;
+    }
+    cols.push({ id: 'future', day: 'Future', dateKey: null, dateLabel: '' });
+    cols.push({ id: 'nodate', day: 'No Date', dateKey: null, dateLabel: '' });
+    return { todayKey: localDateKey(today), lastVisibleKey: localDateKey(lastDate), cols };
+  }
+
+  function assignTaskToColumn(task, todayKey, lastVisibleKey, colsByKey) {
+    if (!task.due_date || task.due_date === NO_DATE) return 'nodate';
+    const d = new Date(task.due_date);
+    const key = localDateKey(d);
+    if (key < todayKey) return 'overdue';
+    if (colsByKey.has(key)) return key;
+    if (key > lastVisibleKey) return 'future';
+    return null;
+  }
+
+  // --- Card render ---
+  function priorityBadge(p) {
+    if (!p || p < 1) return null;
+    const b = document.createElement('span');
+    b.className = 'badge prio-' + p;
+    b.textContent = PRIORITY_LABEL[p] || ('P' + p);
+    return b;
+  }
+
+  function renderCard(task, projectMap, showProjectBadge, showDueDate) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.taskId = task.id;
+    card.draggable = true;
+    card.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', String(task.id));
+      e.dataTransfer.effectAllowed = 'move';
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+
+    const a = document.createElement('a');
+    a.className = 'card-title';
+    a.href = vikunjaTaskUrl(task.id);
+    a.target = 'vikunja';
+    a.draggable = false; // suppress native link-drag so the card-drag handler wins
+    a.textContent = task.title;
+    card.appendChild(a);
+
+    const meta = document.createElement('div');
+    meta.className = 'card-meta';
+
+    if (showProjectBadge) {
+      const projectName = projectMap.get(task.project_id);
+      if (projectName) {
+        const pb = document.createElement('span');
+        pb.className = 'badge proj';
+        pb.textContent = projectName;
+        meta.appendChild(pb);
+      }
+    }
+    if (showDueDate && task.due_date && task.due_date !== NO_DATE) {
+      const d = new Date(task.due_date);
+      const due = document.createElement('span');
+      due.className = 'badge due';
+      due.textContent = `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)}`;
+      meta.appendChild(due);
+    }
+    const pb = priorityBadge(task.priority);
+    if (pb) meta.appendChild(pb);
+
+    if (meta.children.length) card.appendChild(meta);
+    return card;
+  }
+
+  // --- Drag and drop ---
+  function timeOfDayMs(isoDate) {
+    if (!isoDate || isoDate === NO_DATE) return 0;
+    const d = new Date(isoDate);
+    return d.getHours() * 3600000 + d.getMinutes() * 60000 + d.getSeconds() * 1000 + d.getMilliseconds();
+  }
+
+  function findInsertionPoint(colEl, dropY) {
+    // Cards still in DOM order; exclude the one currently being dragged
+    const cards = [...colEl.querySelectorAll('.card')].filter(c => !c.classList.contains('dragging'));
+    let insertIdx = cards.length;
+    for (let i = 0; i < cards.length; i++) {
+      const r = cards[i].getBoundingClientRect();
+      const mid = r.top + r.height / 2;
+      if (dropY < mid) { insertIdx = i; break; }
+    }
+    const aboveEl = insertIdx > 0 ? cards[insertIdx - 1] : null;
+    const belowEl = insertIdx < cards.length ? cards[insertIdx] : null;
+    return {
+      aboveEl, belowEl,
+      aboveId: aboveEl ? Number(aboveEl.dataset.taskId) : null,
+      belowId: belowEl ? Number(belowEl.dataset.taskId) : null,
+    };
+  }
+
+  function clearFlankHighlights(root) {
+    root.querySelectorAll('.card.drop-flank').forEach(c => c.classList.remove('drop-flank'));
+  }
+
+  function updateFlankHighlights(colEl, dropY) {
+    clearFlankHighlights(colEl);
+    const { aboveEl, belowEl } = findInsertionPoint(colEl, dropY);
+    if (aboveEl) aboveEl.classList.add('drop-flank');
+    if (belowEl) belowEl.classList.add('drop-flank');
+  }
+
+  function computeNewDueDate(targetColumn, insertion) {
+    if (targetColumn.id === 'nodate') return NO_DATE;
+
+    const [y, mo, d] = targetColumn.dateKey.split('-').map(Number);
+    const base = new Date(y, mo - 1, d, 0, 0, 0, 0);
+
+    const above = insertion.aboveId ? state.tasks.find(t => t.id === insertion.aboveId) : null;
+    const below = insertion.belowId ? state.tasks.find(t => t.id === insertion.belowId) : null;
+    const aboveMs = above ? timeOfDayMs(above.due_date) : null;
+    const belowMs = below ? timeOfDayMs(below.due_date) : null;
+
+    const DAY_END = 86340000; // 23:59:00
+    let newTimeMs;
+    if (aboveMs !== null && belowMs !== null) {
+      newTimeMs = Math.floor((aboveMs + belowMs) / 2);
+      if (newTimeMs === aboveMs) newTimeMs = aboveMs + 1; // tie-break
+    } else if (aboveMs !== null) {
+      newTimeMs = Math.min(DAY_END, aboveMs + 60000);
+    } else if (belowMs !== null) {
+      newTimeMs = Math.max(0, belowMs - 60000);
+    } else {
+      newTimeMs = 0; // empty column → midnight
+    }
+
+    return new Date(base.getTime() + newTimeMs).toISOString();
+  }
+
+  function attachDropHandlers(colEl, columnSpec) {
+    let depth = 0;
+    colEl.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      if (depth === 0) colEl.classList.add('drag-over');
+      depth++;
+    });
+    colEl.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      updateFlankHighlights(colEl, e.clientY);
+    });
+    colEl.addEventListener('dragleave', () => {
+      depth = Math.max(0, depth - 1);
+      if (depth === 0) {
+        colEl.classList.remove('drag-over');
+        clearFlankHighlights(colEl);
+      }
+    });
+    colEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      depth = 0;
+      colEl.classList.remove('drag-over');
+      clearFlankHighlights(colEl);
+      const taskId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      if (!taskId) return;
+      const insertion = findInsertionPoint(colEl, e.clientY);
+      rescheduleTask(taskId, columnSpec, insertion);
+    });
+  }
+
+  async function rescheduleTask(taskId, targetColumn, insertion) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newDueDate = computeNewDueDate(targetColumn, insertion);
+    if (newDueDate === task.due_date) return; // no change
+
+    const originalDueDate = task.due_date;
+    task.due_date = newDueDate;
+    applyAndRender();
+    setStatus(`moving "${task.title}"…`);
+
+    try {
+      const r = await fetch(window.VIKUNJA_BASE + `/tasks/${taskId}`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ due_date: newDueDate }),
+      });
+      if (!r.ok) {
+        const body = await r.text().catch(() => '');
+        throw new Error(`HTTP ${r.status}: ${body.slice(0, 200)}`);
+      }
+      const updated = await r.json();
+      Object.assign(task, updated);
+      applyAndRender();
+      setStatus(`moved "${task.title}" to ${targetColumn.day}`);
+    } catch (e) {
+      task.due_date = originalDueDate;
+      applyAndRender();
+      setStatus(`Move failed: ${e.message}`, true);
+      console.error(e);
+    }
+  }
+
+  // --- Render board ---
+  function render(tasks, projectMap, showProjectBadges) {
+    const { todayKey, lastVisibleKey, cols } = buildColumns(state.visibleDays);
+    boardEl.style.gridTemplateColumns = `repeat(${cols.length}, minmax(220px, 1fr))`;
+
+    const colsByKey = new Map();
+    for (const c of cols) if (c.dateKey) colsByKey.set(c.dateKey, c);
+
+    const buckets = new Map();
+    for (const c of cols) buckets.set(c.id, []);
+    for (const t of tasks) {
+      const colId = assignTaskToColumn(t, todayKey, lastVisibleKey, colsByKey);
+      if (colId) buckets.get(colId).push(t);
+    }
+
+    boardEl.innerHTML = '';
+    for (const c of cols) {
+      const colEl = document.createElement('section');
+      colEl.className = 'col';
+      if (c.id === 'overdue') colEl.classList.add('overdue');
+      if (c.isToday) colEl.classList.add('today');
+      if (c.id === 'future') colEl.classList.add('future');
+      if (c.id === 'nodate') colEl.classList.add('nodate');
+
+      const header = document.createElement('div');
+      header.className = 'col-header';
+      const day = document.createElement('span');
+      day.className = 'day';
+      day.textContent = c.day;
+      const date = document.createElement('span');
+      date.className = 'date';
+      date.textContent = c.dateLabel;
+      const count = document.createElement('span');
+      count.className = 'count';
+      const tasksHere = buckets.get(c.id);
+      count.textContent = tasksHere.length || '';
+      header.append(day, date, count);
+      colEl.appendChild(header);
+
+      const body = document.createElement('div');
+      body.className = 'col-body';
+      if (tasksHere.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = '—';
+        body.appendChild(empty);
+      } else {
+        // Sort: priority desc, then due_date+time asc (so a drop-between can pick a midpoint
+        // time and position the card correctly between its two flanking cards).
+        tasksHere.sort((a, b) =>
+          (b.priority || 0) - (a.priority || 0) || (a.due_date || '').localeCompare(b.due_date || '')
+        );
+        // Show a due-date badge in the Overdue / Future / No Date columns
+        // (in dated columns the column itself tells you the day)
+        const showDueDate = c.id === 'overdue' || c.id === 'future';
+        for (const t of tasksHere) {
+          body.appendChild(renderCard(t, projectMap, showProjectBadges, showDueDate));
+        }
+      }
+      colEl.appendChild(body);
+      // Drop targets: every dated day column + No Date. Overdue and Future are not drop targets
+      // (no specific date to assign).
+      if (c.dateKey || c.id === 'nodate') attachDropHandlers(colEl, c);
+      boardEl.appendChild(colEl);
+    }
+
+    const overdueCount = buckets.get('overdue').length;
+    const totalShown = tasks.length;
+    setStatus(`${totalShown} task${totalShown === 1 ? '' : 's'}  ·  ${overdueCount} overdue  ·  ${state.visibleDays}-day view  ·  updated ${new Date().toLocaleTimeString()}`);
+  }
+
+  function applyAndRender() {
+    const sel = state.selectedProjectIds;
+    const filtered = state.tasks.filter(t => sel.has(t.project_id));
+    const showBadges = sel.size !== 1;
+    render(filtered, state.projectMap, showBadges);
+  }
+
+  // --- Load ---
+  async function load() {
+    refreshBtn.disabled = true;
+    setStatus('loading…');
+    try {
+      const [tasks, projectMap] = await Promise.all([fetchAllTasks(), fetchProjectMap()]);
+      state.tasks = tasks;
+      state.projectMap = projectMap;
+      state.allProjectIds = [...projectMap.keys()];
+      state.selectedProjectIds = loadProjectFilter(state.allProjectIds);
+      state.defaultProjectId = pickDefaultProjectId();
+      buildProjectFilterPanel();
+      buildAddProjectPanel();
+      updatePfButton();
+      updateAddProjectButton();
+      applyAndRender();
+    } catch (e) {
+      setStatus('Error: ' + e.message, true);
+      console.error(e);
+    } finally {
+      refreshBtn.disabled = false;
+    }
+  }
+
+  initDaysSelect();
+  refreshBtn.addEventListener('click', load);
+  load();
+</script>
+
+</body>
+</html>
