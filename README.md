@@ -182,3 +182,7 @@ The `.gitignore` excludes:
 - `node_modules/`, `dist/`, `.env*`, editor folders
 
 Before pushing, run `git status` and make sure none of those appear in the diff.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Use it, fork it, ship a fancier version, no obligation to publish your changes back. A heads-up if you do something cool with it is appreciated but not required.

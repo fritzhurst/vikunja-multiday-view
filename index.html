@@ -56,6 +56,13 @@
 
     .status { color: var(--muted); font-size: .85rem; }
     .status.error { color: var(--overdue); font-weight: 600; }
+    .app-version {
+      font-size: .7rem;
+      font-weight: 400;
+      color: var(--muted);
+      margin-left: .15rem;
+      letter-spacing: .02em;
+    }
 
     .days-wrapper { display: flex; align-items: center; gap: .35rem; font-size: .9rem; color: var(--muted); }
     .days-wrapper select {
@@ -249,7 +256,7 @@
 <body>
 
 <header class="app-header">
-  <h1>Vikunja Kanban</h1>
+  <h1>Vikunja Kanban <span id="app-version" class="app-version"></span></h1>
   <span id="status" class="status">idle</span>
   <span class="spacer"></span>
   <label class="days-wrapper" for="days-select">
@@ -283,6 +290,7 @@
 
 <script src="config.js"></script>
 <script>
+  const APP_VERSION = '1.0.0';
   const PRIORITY_LABEL = { 1: 'Low', 2: 'Med', 3: 'High', 4: 'Urgent', 5: 'Do Now' };
   const NO_DATE = '0001-01-01T00:00:00Z';
   const PROJECT_FILTER_KEY = 'kanban.projectFilter';
@@ -960,6 +968,7 @@
     }
   }
 
+  document.getElementById('app-version').textContent = 'v' + APP_VERSION;
   initDaysSelect();
   refreshBtn.addEventListener('click', load);
   load();
