@@ -68,36 +68,30 @@ The repo ships an Unraid container template (`vikunja-multiday-view.xml`) so the
 
 ### Install via the Unraid template (recommended)
 
-On the Unraid box:
+The image is published to GitHub Container Registry (GHCR) as `ghcr.io/fritzhurst/vikunja-multiday-view:latest`. Unraid will pull it automatically — no local build required.
+
+One-time: download the container template XML so the Add Container form can find it:
 
 ```sh
-mkdir -p /mnt/user/appdata/vikunja-multiday-view
-cd /mnt/user/appdata/vikunja-multiday-view
-git clone https://github.com/fritzhurst/vikunja-multiday-view.git .
-docker build -t vikunja-multiday-view:latest .
-
-# Drop the template where Unraid's Docker tab will find it:
-cp vikunja-multiday-view.xml /boot/config/plugins/dockerMan/templates-user/my-vikunja-multiday-view.xml
+mkdir -p /boot/config/plugins/dockerMan/templates-user
+wget -O /boot/config/plugins/dockerMan/templates-user/my-vikunja-multiday-view.xml \
+  https://raw.githubusercontent.com/fritzhurst/vikunja-multiday-view/main/vikunja-multiday-view.xml
 ```
 
 Then in Unraid's WebUI:
 
 1. **Docker** → **Add Container**.
-2. **Template** dropdown at the top → pick **vikunja-multiday-view**. All fields pre-fill (name, repository, port `3457`, env vars with helpful descriptions and a masked token field).
+2. **Template** dropdown at the top → pick **vikunja-multiday-view**. All fields pre-fill (name, repository at `ghcr.io/…`, port `3457`, env vars with descriptions, masked token field).
 3. Replace the placeholder **Vikunja URL** (`https://tasks.example.com`) with your real Vikunja URL.
 4. Paste your **Vikunja API Token** (the field is masked).
 5. *(Optional)* Change host port `3457` if it conflicts with something on your box.
-6. **Apply**. Unraid runs the container, the entrypoint renders `config.js` and `default.conf`, and the new container shows up in the Docker tab.
+6. **Apply**. Unraid pulls the image from GHCR, runs the container, the entrypoint renders `config.js` and `default.conf` from your env vars, and the container shows up in the Docker tab.
 
-Future updates:
-```sh
-cd /mnt/user/appdata/vikunja-multiday-view
-git pull
-docker build -t vikunja-multiday-view:latest .
-```
-Then in the Docker tab, click the container icon → **Update** (or stop/start). The template stays as-is.
+### Updates
 
-### Build the image (manual / non-Unraid Docker hosts)
+When a new image is pushed to GHCR (every commit to `main` and every `v*` tag — see [build-and-push workflow](.github/workflows/build-and-push.yml)), Unraid's Docker tab will show **"update available"** for the container. Click **Update** to pull and restart — env vars (token, URL) are preserved.
+
+### Build the image yourself (forks / non-Unraid Docker hosts)
 
 On your Unraid server (or any Docker host):
 

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>vikunja-multiday-view</Name>
-  <Repository>vikunja-multiday-view:latest</Repository>
-  <Registry/>
+  <Repository>ghcr.io/fritzhurst/vikunja-multiday-view:latest</Repository>
+  <Registry>https://github.com/fritzhurst/vikunja-multiday-view/pkgs/container/vikunja-multiday-view</Registry>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
@@ -23,11 +23,6 @@
   <Description>Companion app to Vikunja that adds a multi-day kanban view (Overdue + Today + N future days + Future + No Date). Drag-and-drop reschedules tasks via the Vikunja API. Vanilla HTML/CSS/JS served by nginx; no database, no state in this container.
 
 REQUIRED: a personal API token from your Vikunja instance with scopes: Tasks (read_all + update + create), Projects (read_all). Generate at avatar -&gt; Settings -&gt; API Tokens.
-
-BEFORE FIRST USE: build the image once on your Unraid box:
-  cd /mnt/user/appdata/vikunja-multiday-view
-  git clone https://github.com/fritzhurst/vikunja-multiday-view.git .
-  docker build -t vikunja-multiday-view:latest .
 
 SECURITY NOTE: the API token is served to the browser as part of config.js. If exposed via Cloudflare Tunnel or a reverse proxy, gate the hostname with Cloudflare Access (or equivalent SSO) so random internet visitors cannot read the token. See the project README for details.</Description>
   <Config Name="WebUI" Target="8080" Default="3457" Mode="tcp" Description="HTTP port that nginx serves the app on. Default 3457 (sits right next to Vikunja's 3456); change if that conflicts." Type="Port" Display="always" Required="true" Mask="false">3457</Config>
