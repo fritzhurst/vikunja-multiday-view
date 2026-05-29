@@ -6,6 +6,8 @@ FROM nginxinc/nginx-unprivileged:alpine
 USER root
 
 COPY index.html /usr/share/nginx/html/index.html
+COPY icon.png /usr/share/nginx/html/icon.png
+COPY favicon.ico /usr/share/nginx/html/favicon.ico
 COPY default.conf.tmpl /etc/nginx/conf.d/default.conf.tmpl
 COPY docker-entrypoint.d/10-vikunja-config.sh /docker-entrypoint.d/10-vikunja-config.sh
 
