@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>vikunja-multiday-view</Name>
+  <Repository>vikunja-multiday-view:latest</Repository>
+  <Registry/>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/fritzhurst/vikunja-multiday-view/issues</Support>
+  <Project>https://github.com/fritzhurst/vikunja-multiday-view</Project>
+  <Overview>A multi-day kanban view for Vikunja tasks. Renders incomplete tasks as day-columns (Overdue, Today + N future days, Future, No Date). Drag-and-drop reschedules due dates. Talks to your existing Vikunja instance over the REST API; this container does NOT include or replace Vikunja itself.</Overview>
+  <Category>Productivity: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <TemplateURL/>
+  <Icon/>
+  <ExtraParams>--restart=unless-stopped</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Description>Companion app to Vikunja that adds a multi-day kanban view (Overdue + Today + N future days + Future + No Date). Drag-and-drop reschedules tasks via the Vikunja API. Vanilla HTML/CSS/JS served by nginx; no database, no state in this container.
+
+REQUIRED: a personal API token from your Vikunja instance with scopes: Tasks (read_all + update + create), Projects (read_all). Generate at avatar -&gt; Settings -&gt; API Tokens.
+
+BEFORE FIRST USE: build the image once on your Unraid box:
+  cd /mnt/user/appdata/vikunja-multiday-view
+  git clone https://github.com/fritzhurst/vikunja-multiday-view.git .
+  docker build -t vikunja-multiday-view:latest .
+
+SECURITY NOTE: the API token is served to the browser as part of config.js. If exposed via Cloudflare Tunnel or a reverse proxy, gate the hostname with Cloudflare Access (or equivalent SSO) so random internet visitors cannot read the token. See the project README for details.</Description>
+  <Config Name="WebUI" Target="8080" Default="3457" Mode="tcp" Description="HTTP port that nginx serves the app on. Default 3457 (sits right next to Vikunja's 3456); change if that conflicts." Type="Port" Display="always" Required="true" Mask="false">3457</Config>
+  <Config Name="Vikunja URL" Target="VIKUNJA_URL" Default="https://tasks.example.com" Mode="" Description="Base URL of your Vikunja instance, no trailing slash. Example: https://tasks.yourdomain.com . The app derives both the API base (/api/v1) and task page links from this." Type="Variable" Display="always" Required="true" Mask="false">https://tasks.example.com</Config>
+  <Config Name="Vikunja API Token" Target="VIKUNJA_TOKEN" Default="" Mode="" Description="Personal API token from Vikunja. Required scopes: Tasks read_all + update + create, Projects read_all. The token is stored in this container's environment and written into the browser-served config.js at startup." Type="Variable" Display="always" Required="true" Mask="true">tk_paste_your_token_here</Config>
+</Container>

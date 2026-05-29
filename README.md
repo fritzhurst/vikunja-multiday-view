@@ -62,9 +62,42 @@ If you'd rather not use git, you can `scp` the project directory directly to Unr
 
 ## Production deploy on Unraid
 
-The container is a stock `nginx:alpine` that writes `config.js` from env vars at startup, so the token never lives in the image — it's read from environment at container start.
+The container is a stock `nginxinc/nginx-unprivileged:alpine` that writes `config.js` from env vars at startup, so the token never lives in the image — it's read from environment at container start.
 
-### Build the image
+The repo ships an Unraid container template (`vikunja-multiday-view.xml`) so the Docker → Add Container form pre-populates everything except the values you must customize (URL and token).
+
+### Install via the Unraid template (recommended)
+
+On the Unraid box:
+
+```sh
+mkdir -p /mnt/user/appdata/vikunja-multiday-view
+cd /mnt/user/appdata/vikunja-multiday-view
+git clone https://github.com/fritzhurst/vikunja-multiday-view.git .
+docker build -t vikunja-multiday-view:latest .
+
+# Drop the template where Unraid's Docker tab will find it:
+cp vikunja-multiday-view.xml /boot/config/plugins/dockerMan/templates-user/my-vikunja-multiday-view.xml
+```
+
+Then in Unraid's WebUI:
+
+1. **Docker** → **Add Container**.
+2. **Template** dropdown at the top → pick **vikunja-multiday-view**. All fields pre-fill (name, repository, port `3457`, env vars with helpful descriptions and a masked token field).
+3. Replace the placeholder **Vikunja URL** (`https://tasks.example.com`) with your real Vikunja URL.
+4. Paste your **Vikunja API Token** (the field is masked).
+5. *(Optional)* Change host port `3457` if it conflicts with something on your box.
+6. **Apply**. Unraid runs the container, the entrypoint renders `config.js` and `default.conf`, and the new container shows up in the Docker tab.
+
+Future updates:
+```sh
+cd /mnt/user/appdata/vikunja-multiday-view
+git pull
+docker build -t vikunja-multiday-view:latest .
+```
+Then in the Docker tab, click the container icon → **Update** (or stop/start). The template stays as-is.
+
+### Build the image (manual / non-Unraid Docker hosts)
 
 On your Unraid server (or any Docker host):
 
