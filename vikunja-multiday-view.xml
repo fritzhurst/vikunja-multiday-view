@@ -13,7 +13,7 @@
   <Category>Productivity: Tools:</Category>
   <WebUI>http://[IP]:[PORT:8080]/</WebUI>
   <TemplateURL/>
-  <Icon>https://raw.githubusercontent.com/fritzhurst/vikunja-multiday-view/main/icon.svg</Icon>
+  <Icon>https://raw.githubusercontent.com/fritzhurst/vikunja-multiday-view/main/icon.png</Icon>
   <ExtraParams>--restart=unless-stopped</ExtraParams>
   <PostArgs/>
   <CPUset/>
